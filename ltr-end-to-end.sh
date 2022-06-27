@@ -1,11 +1,11 @@
 usage()
 {
-  echo "Usage: $0 [-s /workspace/search_with_machine_learning_course] [-c {ctr, heuristic, binary}] [ -w week1 ] [ -d ] [ -a /path/to/bbuy/products/train.csv ]  [-t num rows for the test split, default 100000] [-e num test queries to run. Default 200] [-r num rows for the training split, default 1000000] [-y] [-o output dir] [-g RESCORE QUERY WEIGHT] [-m MAIN QUERY WEIGHT] "
+  echo "Usage: $0 [-s /workspace/search_with_machine_learning_course-1] [-c {ctr, heuristic, binary}] [ -w week1 ] [ -d ] [ -a /path/to/bbuy/products/train.csv ]  [-t num rows for the test split, default 100000] [-e num test queries to run. Default 200] [-r num rows for the training split, default 1000000] [-y] [-o output dir] [-g RESCORE QUERY WEIGHT] [-m MAIN QUERY WEIGHT] "
   echo "Example: ./ltr-end-to-end.sh -s ../python/search_ml -w week1_finished  -o /Users/grantingersoll/projects/corise/datasets/ltr/250 -a /Users/grantingersoll/projects/corise/datasets/bbuy/train.csv -y -c quantiles -e 100 -m 0"
   exit 2
 }
 
-SOURCE_DIR="/workspace/search_with_machine_learning_course"
+SOURCE_DIR="/workspace/search_with_machine_learning_course-1"
 WEEK="week1"
 OUTPUT_DIR="/workspace/ltr_output"
 ALL_CLICKS_FILE="/workspace/datasets/train.csv"
