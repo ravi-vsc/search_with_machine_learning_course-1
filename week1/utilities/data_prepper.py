@@ -234,19 +234,40 @@ class DataPrepper:
         # IMPLEMENT_START --
         print("IMPLEMENT ME: __log_ltr_query_features: Extract log features out of the LTR:EXT response and place in a data frame")
         # Loop over the hits structure returned by running `log_query` and then extract out the features from the response per query_id and doc id.  Also capture and return all query/doc pairs that didn't return features
-        # Your structure should look like the data frame below
-        feature_results = {}
-        feature_results["doc_id"] = []  # capture the doc id so we can join later
-        feature_results["query_id"] = []  # ^^^
-        feature_results["sku"] = []
-        feature_results["name_match"] = []
-        rng = np.random.default_rng(12345)
+        response = self.opensearch.search(body=log_query, index=self.index_name)
+
+        # Loop over the hits structure returned by running `log_query` and then extract out the
+        # features from the response per query_id and doc id.  Also capture and return all query/doc
+        # pairs that didn't return features
+
+        hits = response['hits']['hits']
+        hits_by_doc_id = {int(h["_id"]): h for h in hits}
+        feature_results = []
         for doc_id in query_doc_ids:
-            feature_results["doc_id"].append(doc_id)  # capture the doc id so we can join later
-            feature_results["query_id"].append(query_id)
-            feature_results["sku"].append(doc_id)  
-            feature_results["name_match"].append(rng.random())
-        frame = pd.DataFrame(feature_results)
+            feature_result = {
+                "doc_id": doc_id,
+                "query_id": query_id,
+                "sku": doc_id
+            }
+            if hits_by_doc_id.get(doc_id):
+                for pair in hits_by_doc_id[doc_id]['fields']['_ltrlog'][0]['log_entry']:
+                    name, value = pair.get('name'), pair.get('value', 0)
+                    feature_result[name] = value
+            feature_results.append(feature_result)
+        feature_names = set()
+        for fr in feature_results:
+            feature_names |= set(fr.keys())
+        for fr in feature_results:
+            for name in feature_names:
+                if name not in fr:
+                    fr[name] = 0
+
+        feature_results_for_df = defaultdict(list)
+        for fr in feature_results:
+            for k, v in fr.items():
+                feature_results_for_df[k].append(v)
+
+        frame = pd.DataFrame(feature_results_for_df)
         return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64'})
         # IMPLEMENT_END
 
