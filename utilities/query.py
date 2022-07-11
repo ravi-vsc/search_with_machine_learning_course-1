@@ -1,17 +1,20 @@
 # A simple client for querying driven by user input on the command line.  Has hooks for the various
 # weeks (e.g. query understanding).  See the main section at the bottom of the file
-from opensearchpy import OpenSearch
-import warnings
-warnings.filterwarnings("ignore", category=FutureWarning)
 import argparse
+
+# import fileinput
 import json
+import logging
 import os
+import warnings
 from getpass import getpass
 from urllib.parse import urljoin
-import pandas as pd
-import fileinput
-import logging
 
+import pandas as pd
+from opensearchpy import OpenSearch
+import fasttext
+
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -49,7 +52,7 @@ def create_prior_queries(doc_ids, doc_id_weights,
 
 
 # Hardcoded query here.  Better to use search templates or other query config.
-def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=10, source=None):
+def create_query(user_query, click_prior_query, filters, query_category,sort="_score", sortDir="desc", size=10, source=None, use_synonyms: bool = False):
     query_obj = {
         'size': size,
         "sort": [
@@ -112,7 +115,8 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
                             }
                         ],
                         "minimum_should_match": 1,
-                        "filter": filters  #
+                         "filter": [{ "term":  {"categoryPathIds": query_category}}],
+                         # "filter": filters
                     }
                 },
                 "boost_mode": "multiply",  # how _score and functions are combined
@@ -185,12 +189,23 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
         query_obj["_source"] = source
     return query_obj
 
-
-def search(client, user_query, index="bbuy_products", sort="_score", sortDir="desc"):
+def search(client, user_query, index="bbuy_products", sort="_score", sortDir="desc", use_synonyms:bool=False):
     #### W3: classify the query
+    model = fasttext.load_model("/workspace/datasets/queries_classifier_1k.bin")
+    query_category = model.predict(user_query)[0][0].split("__")[2]
+    print(query_category)
     #### W3: create filters and boosts
     # Note: you may also want to modify the `create_query` method above
-    query_obj = create_query(user_query, click_prior_query=None, filters=None, sort=sort, sortDir=sortDir, source=["name", "shortDescription"])
+    query_obj = create_query(
+        user_query,
+        click_prior_query=None,
+        filters=None,
+        query_category=query_category,
+        sort=sort,
+        sortDir=sortDir,
+        source=["name", "shortDescription"],
+        use_synonyms=use_synonyms,
+    )
     logging.info(query_obj)
     response = client.search(query_obj, index=index)
     if response and response['hits']['hits'] and len(response['hits']['hits']) > 0:
@@ -241,14 +256,23 @@ if __name__ == "__main__":
 
     )
     index_name = args.index
+    use_synonyms: bool = args.synonyms
     query_prompt = "\nEnter your query (type 'Exit' to exit or hit ctrl-c):"
-    print(query_prompt)
-    for line in fileinput.input():
-        query = line.rstrip()
-        if query == "Exit":
+    while True:
+        try:
+            query: str = str(input(query_prompt)).rstrip()
+        except KeyboardInterrupt:
             break
-        search(client=opensearch, user_query=query, index=index_name)
+        else:
+            if query.lower() == "exit":
+                break
+            else:
+                search(
+                    client=opensearch,
+                    user_query=query,
+                    index=index_name,
+                    use_synonyms=use_synonyms,
+                )
 
-        print(query_prompt)
 
     
