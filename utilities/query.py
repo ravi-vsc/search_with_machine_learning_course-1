@@ -258,6 +258,7 @@ if __name__ == "__main__":
     index_name = args.index
     use_synonyms: bool = args.synonyms
     query_prompt = "\nEnter your query (type 'Exit' to exit or hit ctrl-c):"
+    print(query_prompt)
     while True:
         try:
             query: str = str(input(query_prompt)).rstrip()
@@ -273,6 +274,6 @@ if __name__ == "__main__":
                     index=index_name,
                     use_synonyms=use_synonyms,
                 )
-
+                print(query_prompt)
 
     
